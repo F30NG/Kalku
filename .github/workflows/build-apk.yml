@@ -1,51 +1,35 @@
-Build Kalku APK
-
 name: Build Kalku APK
 
 on:
-workflow_dispatch:
-push:
-branches:
-- main
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Ambil kode proyek
-    uses: actions/checkout@v4
+    steps:
+      - name: Ambil kode proyek
+        uses: actions/checkout@v4
 
-  - name: Siapkan Java
-    uses: actions/setup-java@v4
-    with:
-      distribution: temurin
-      java-version: '17'
+      - name: Siapkan Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Siapkan Gradle
-    uses: gradle/actions/setup-gradle@v4
-    with:
-      gradle-version: '8.9'
+      - name: Siapkan Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
-  - name: Periksa struktur proyek
-    run: |
-      echo "=== Folder utama ==="
-      ls -la
-      echo "=== Cari konfigurasi Gradle ==="
-      find . -maxdepth 4 -name "settings.gradle" -o -name "settings.gradle.kts" -o -name "build.gradle" -o -name "build.gradle.kts" -print
+      - name: Build APK
+        run: gradle assembleDebug
 
-  - name: Bangun APK
-    run: gradle assembleDebug
-
-  - name: Cari file APK
-    run: |
-      echo "=== Hasil APK ==="
-      find . -type f -name "*.apk" -print
-
-  - name: Simpan APK
-    uses: actions/upload-artifact@v4
-    with:
-      name: Kalku-debug-apk
-      path: "**/build/outputs/apk/debug/*.apk"
-      if-no-files-found: error
-      retention-days: 7
+      - name: Simpan APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kalku-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
