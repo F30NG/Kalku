@@ -25,6 +25,13 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Periksa file proyek
+        run: |
+          echo "=== Isi folder utama ==="
+          ls -la
+          echo "=== Cari file konfigurasi Gradle ==="
+          find . -maxdepth 3 \( -name "settings.gradle" -o -name "build.gradle" \) -print
+
       - name: Bangun APK
         run: gradle -p . assembleDebug
 
