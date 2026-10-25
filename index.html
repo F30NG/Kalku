@@ -22,7 +22,8 @@ button.danger{background:#fff0ef;color:#b83e48;border-color:#f2d7d5;box-shadow:n
 .brand h1{font-size:27px;font-weight:850;line-height:1.2;margin:0;letter-spacing:-.055em;color:#173b2c}
 .brand p{margin:4px 0 0;color:#738176;font-size:12px}
 .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end;flex:1}
-.currency-select{background:#fff;border:1px solid #dfe7dd;color:#274536;padding:10px 12px;border-radius:12px;width:auto;min-width:205px;min-height:44px;margin-left:auto}
+.currency-select{background:#174b37;border:1px solid #27634c;color:#ffffff;padding:10px 12px;border-radius:12px;width:auto;min-width:205px;min-height:44px;margin-left:auto;font-weight:650;outline:none}
+.currency-select option{background:#ffffff;color:#182820}
 
 .tabs{display:flex;gap:4px;overflow-x:auto;padding:5px;background:#e9eee7;border:1px solid #dfe7dd;border-radius:16px;margin-bottom:22px;scrollbar-width:thin}
 .tab{white-space:nowrap;background:transparent;color:#65766a;border:0;padding:10px 14px;font-size:13px;border-radius:11px;font-weight:700;box-shadow:none}
@@ -206,7 +207,7 @@ let data=load();
 
 function load(){try{return {...structuredClone(defaults),...JSON.parse(localStorage.getItem('fintrack_data')||'{}')}}catch{return structuredClone(defaults)}}
 function save(){localStorage.setItem('fintrack_data',JSON.stringify(data));render();renderHistory()}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;T'[c]))}
 function monthTx(m=monthNow()){return data.transactions.filter(t=>t.date?.startsWith(m))}
 function txAmount(type){return monthTx().filter(t=>t.type===type).reduce((a,t)=>a+Number(t.amount||0),0)}
 function assetTotal(){const income=data.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount||0),0);const expense=data.transactions.filter(t=>t.type==='expense'||t.type==='allocation').reduce((s,t)=>s+Number(t.amount||0),0);return income-expense+data.investments.reduce((s,i)=>s+Number(i.current||0),0)}
@@ -287,88 +288,4 @@ function render(){
   const inc=txAmount('income'),exp=txAmount('expense'),alloc=txAmount('allocation'),inv=data.investments.reduce((s,i)=>s+Number(i.current||0),0),invested=data.investments.reduce((s,i)=>s+Number(i.capital||0),0);
   $('#monthLabel').textContent=new Date().toLocaleDateString('id-ID',{month:'long',year:'numeric'});
   $('#summaryCards').innerHTML=[['Kekayaan bersih',rupiah(netWorth()),'blue','Aset dikurangi utang'],['Pemasukan bulan ini',rupiah(inc),'positive','Semua pemasukan tercatat'],['Pengeluaran bulan ini',rupiah(exp),'negative','Pengeluaran konsumsi'],['Nilai investasi',rupiah(inv),'gold',`Untung/rugi ${rupiah(inv-invested)}`]].map(c=>`<div class="card"><div class="label">${c[0]}</div><div class="value ${c[2]}">${c[1]}</div><div class="sub">${c[3]}</div></div>`).join('');
-  $('#cashflow').innerHTML=`<div class="row"><span>Pemasukan</span><b class="positive">+${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="negative">−${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Arus kas bersih</span><b>${rupiah(inc-exp)}</b></div>`;
-  const totalAlloc=alloc+data.investments.reduce((s,i)=>s+Number(i.capital||0),0);
-  $('#allocation').innerHTML=`<div class="row"><span>Estimasi sisa uang tercatat</span><b>${rupiah(data.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount||0),0)-data.transactions.filter(t=>t.type==='expense'||t.type==='allocation').reduce((s,t)=>s+Number(t.amount||0),0))}</b></div><div class="row" style="margin-top:8px"><span>Modal investasi</span><b>${rupiah(invested)}</b></div><div class="row" style="margin-top:8px"><span>Alokasi bulan ini</span><b>${rupiah(totalAlloc)}</b></div><div class="sub">Estimasi dihitung dari catatan pemasukan dikurangi pengeluaran dan alokasi.</div>`;
-  $('#recent').innerHTML=data.transactions.slice(0,5).map(txRow).join('')||'<div class="empty">Belum ada transaksi. Mulai dengan mencatat gaji atau pengeluaran pertama.</div>';
-  renderTx();renderInvestments();renderBudgets();renderDebts();renderReports();
-}
-
-function txRow(t){
-  const sign=t.type==='income'?'+':t.type==='expense'?'−':'•';
-  const cls=t.type==='income'?'positive':t.type==='expense'?'negative':'blue';
-  return `<div class="row"><div><div class="name">${esc(t.title)}</div><small>${esc(t.date)} · ${esc(t.category)}</small></div><div class="amount ${cls}">${sign}${rupiah(t.amount)}</div></div>`
-}
-
-function renderTx(){
-  const m=$('#filterMonth').value||monthNow(),type=$('#filterType').value;
-  const arr=data.transactions.filter(t=>(!m||t.date.startsWith(m))&&(type==='all'||t.type===type));
-  $('#transactionsTable').innerHTML=arr.map(t=>`<tr><td>${esc(t.date)}</td><td>${esc(t.title)}</td><td>${esc(t.category)}</td><td class="${t.type==='income'?'positive':t.type==='expense'?'negative':''}">${rupiah(t.amount)}</td><td><button class="danger smallbtn" onclick="delItem('transactions','${t.id}')">Hapus</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">Belum ada transaksi.</td></tr>'
-}
-
-function renderInvestments(){
-  const cap=data.investments.reduce((s,i)=>s+i.capital,0),cur=data.investments.reduce((s,i)=>s+i.current,0);
-  $('#investmentSummary').innerHTML=[['Total modal',rupiah(cap)],['Nilai saat ini',rupiah(cur)],['Untung/rugi',rupiah(cur-cap)]].map((x,i)=>`<div class="card"><div class="label">${x[0]}</div><div class="value ${i===2?(cur>=cap?'positive':'negative'):'blue'}">${x[1]}</div></div>`).join('');
-  $('#investmentsTable').innerHTML=data.investments.map(i=>`<tr><td>${esc(i.name)}</td><td>${esc(i.kind)}</td><td>${rupiah(i.capital)}</td><td>${rupiah(i.current)}</td><td class="${i.current>=i.capital?'positive':'negative'}">${rupiah(i.current-i.capital)} (${i.capital?((i.current-i.capital)/i.capital*100).toFixed(2):'0'}%)</td><td><button class="secondary smallbtn" onclick="editInvestment('${i.id}')">Ubah</button> <button class="danger smallbtn" onclick="delItem('investments','${i.id}')">Hapus</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">Belum ada investasi.</td></tr>'
-}
-
-function editInvestment(id){
-  const i=data.investments.find(x=>x.id===id);if(!i)return;
-  openForm('Perbarui nilai investasi',field('name','Nama aset','text',{value:i.name})+field('capital',`Total modal (${currency()})`,'number',{min:0,value:i.capital})+field('current',`Nilai sekarang (${currency()})`,'number',{min:0,value:i.current}),o=>Object.assign(i,{name:o.name,capital:Number(o.capital),current:Number(o.current)}))
-}
-
-function renderBudgets(){
-  const m=monthTx();
-  $('#budgetsList').innerHTML=data.budgets.map(b=>{const spent=m.filter(t=>t.type==='expense'&&t.category===b.category).reduce((s,t)=>s+t.amount,0),p=Math.min(100,b.limit?spent/b.limit*100:0);return `<div class="card"><div class="section-head"><div><h2>${esc(b.category)}</h2><div class="sub">Terpakai ${rupiah(spent)} dari ${rupiah(b.limit)}</div></div><button class="danger smallbtn" onclick="delItem('budgets','${b.id}')">Hapus</button></div><div class="bar"><span style="width:${p}%;background:${p>=100?'var(--red)':'linear-gradient(90deg,var(--blue),var(--green))'}"></span></div><div class="sub">${p.toFixed(0)}% terpakai · Sisa ${rupiah(Math.max(0,b.limit-spent))}</div></div>`}).join('')||'<div class="empty">Belum ada anggaran yang dibuat.</div>'
-}
-
-function renderDebts(){
-  const owed=debtTotal(),rec=data.debts.filter(d=>d.kind==='receivable').reduce((s,d)=>s+d.remaining,0);
-  $('#debtSummary').innerHTML=[['Total utang',rupiah(owed)],['Piutang',rupiah(rec)]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
-  $('#debtsList').innerHTML=data.debts.map(d=>`<div class="row"><div><div class="name">${esc(d.person)} <span class="pill">${d.kind==='owed'?'Utang':'Piutang'}</span></div><small>Sisa ${rupiah(d.remaining)} dari ${rupiah(d.total)}${d.due?' · Tempo '+esc(d.due):''}</small></div><button class="danger smallbtn" onclick="delItem('debts','${d.id}')">Hapus</button></div>`).join('')||'<div class="empty">Belum ada catatan utang/piutang.</div>'
-}
-
-function renderReports(){
-  const inc=txAmount('income'),exp=txAmount('expense'),saveRate=inc?Math.max(0,(inc-exp)/inc*100):0;
-  $('#reportCards').innerHTML=[['Pemasukan bulan ini',rupiah(inc)],['Pengeluaran bulan ini',rupiah(exp)],['Sisa arus kas',rupiah(inc-exp)],['Rasio sisa arus kas',saveRate.toFixed(1)+'%']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
-  const cats={};monthTx().filter(t=>t.type==='expense').forEach(t=>cats[t.category]=(cats[t.category]||0)+Number(t.amount));
-  const entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-  $('#categoryReport').innerHTML=entries.map(([name,val])=>`<div style="margin:12px 0"><div class="section-head"><span>${esc(name)}</span><b>${rupiah(val)}</b></div><div class="bar"><span style="width:${Math.max(3,val/(entries[0]?.[1]||1)*100)}%"></span></div></div>`).join('')||'<div class="empty">Belum ada pengeluaran bulan ini.</div>'
-}
-
-function renderHistory(){
-  const month=$('#historyMonth')?.value||monthNow();
-  const arr=data.transactions.filter(t=>t.date?.startsWith(month)).sort((a,b)=>b.date.localeCompare(a.date));
-  const sum=type=>arr.filter(t=>t.type===type).reduce((n,t)=>n+Number(t.amount||0),0);
-  const inc=sum('income'),exp=sum('expense'),alloc=sum('allocation');
-  $('#historySummary').innerHTML=[['Pemasukan',rupiah(inc),'positive'],['Pengeluaran',rupiah(exp),'negative'],['Alokasi tabungan/investasi',rupiah(alloc),'blue'],['Sisa arus kas',rupiah(inc-exp-alloc),'gold']].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value ${x[2]}">${x[1]}</div></div>`).join('');
-  $('#historyTransactions').innerHTML=arr.map(t=>{const sign=t.type==='income'?'+':t.type==='expense'?'−':'•';const cls=t.type==='income'?'positive':t.type==='expense'?'negative':'blue';return `<div class="row"><div><div class="name">${esc(t.title)}</div><small>${esc(t.date)} · ${esc(t.category)}</small></div><div class="amount ${cls}">${sign}${rupiah(t.amount)}</div></div>`}).join('')||'<div class="empty">Belum ada transaksi pada bulan ini.</div>'
-}
-
-function showPage(p){
-  $$('.page').forEach(x=>x.classList.toggle('hidden',x.id!==p));
-  $$('.tab').forEach(x=>x.classList.toggle('active',x.dataset.page===p));
-  if(p==='transactions')renderTx();
-  if(p==='history')renderHistory()
-}
-
-$$('.tab').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
-$('#addTransaction').onclick=addTx;
-$('#quickAdd').onclick=()=>{showPage('transactions');addTx()};
-$('#addInvestment').onclick=addInvestment;
-$('#addBudget').onclick=addBudget;
-$('#addDebt').onclick=addDebt;
-$('#currencySelect').value=currency();
-$('#currencySelect').onchange=e=>{data.currency=e.target.value;save()};
-$('#filterMonth').value=monthNow();
-$('#historyMonth').value=monthNow();
-$('#historyMonth').onchange=renderHistory;
-$('#filterMonth').onchange=renderTx;
-$('#filterType').onchange=renderTx;
-$('#closeModal').onclick=$('#cancelModal').onclick=()=>$('#modal').close();
-
-render();
-renderHistory();
-</script>
-</body>
-</html>
+  $('#cashflow').innerHTML=`<div class="row"><span>Pemasukan</span><b class="positive">+${rupiah(inc)}</b></div><div class="row" style
