@@ -76,10 +76,10 @@ tbody tr:last-child td{border-bottom:0}
 .footer{text-align:center;color:#8b978b;font-size:11px;padding:30px 0 10px;border-top:1px solid #e0e7dd;margin-top:25px}
 .page>.section-head{margin-bottom:15px}
 
-dialog{box-shadow:0 24px 90px #00000026;max-height:90vh;overflow:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:22px}
-dialog::backdrop{background:#03071255;backdrop-filter:blur(4px)}
+.modal-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1000;width:min(620px,calc(100% - 24px));max-height:90vh;overflow:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 24px 90px #00000026}
+.modal-backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:#03071255;backdrop-filter:blur(4px);z-index:999}
 #modalTitle{font-size:18px;margin:0}
-#modal .actions{justify-content:flex-start;margin-left:0}
+#modalContainer .actions{justify-content:flex-start;margin-left:0}
 
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.app{padding:18px}.top{align-items:flex-start;flex-direction:column}.actions{width:100%}}
 @media(max-width:560px){.app{padding:15px 12px}.top{gap:14px;margin-bottom:17px;padding-bottom:17px}.brand h1{font-size:24px}.logo{height:48px;width:48px;flex-basis:48px}.top .actions{width:auto;flex:0 0 auto;margin-left:auto;display:flex;justify-content:flex-end}.currency-select{width:auto;min-width:0;max-width:165px;grid-column:auto;padding:9px 8px;font-size:12px}.tabs{margin:0 -1px 17px;background:#e9eee7}.tab{padding:10px 11px}.grid{gap:9px}.card{padding:14px;border-radius:17px}#summaryCards .card{min-height:120px;padding:15px}.value{font-size:18px}.label{font-size:11px}.sub{font-size:11px}.section-head{align-items:flex-start}.section-head h2{font-size:15px}.formgrid{grid-template-columns:1fr}.field.full{grid-column:auto}.row{padding:11px 12px}.amount{font-size:13px}.pill{white-space:normal;text-align:center}.footer{padding-top:24px}}
@@ -182,13 +182,16 @@ dialog::backdrop{background:#03071255;backdrop-filter:blur(4px)}
 <div class="footer">Kalku · Catatan keuangan pribadi · Data tersimpan di perangkat ini</div>
 </main>
 
-<dialog id="modal" style="width:min(620px,calc(100% - 24px));">
-  <div class="section-head"><h2 id="modalTitle">Tambah data</h2><button class="secondary" id="closeModal">Tutup</button></div>
-  <form id="modalForm">
-    <div id="modalFields" class="formgrid"></div>
-    <div class="actions section"><button type="submit">Simpan</button><button type="button" class="secondary" id="cancelModal">Batal</button></div>
-  </form>
-</dialog>
+<div id="modalContainer">
+  <div id="modalBackdrop" class="modal-backdrop hidden"></div>
+  <div id="modal" class="modal-box hidden">
+    <div class="section-head"><h2 id="modalTitle">Tambah data</h2><button class="secondary" id="closeModal" type="button">Tutup</button></div>
+    <form id="modalForm">
+      <div id="modalFields" class="formgrid"></div>
+      <div class="actions section"><button type="submit">Simpan</button><button type="button" class="secondary" id="cancelModal">Batal</button></div>
+    </form>
+  </div>
+</div>
 
 <script>
 const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
@@ -204,7 +207,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const defaults={currency:'IDR',transactions:[],investments:[],budgets:[],debts:[]};
 let data=load();
 
-function load(){try{return {...structuredClone(defaults),...JSON.parse(localStorage.getItem('fintrack_data')||'{}')}}catch{return structuredClone(defaults)}}
+function load(){try{return Object.assign(JSON.parse(JSON.stringify(defaults)),JSON.parse(localStorage.getItem('fintrack_data')||'{}'))}catch{return JSON.parse(JSON.stringify(defaults))}}
 function save(){localStorage.setItem('fintrack_data',JSON.stringify(data));render();renderHistory()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function monthTx(m=monthNow()){return data.transactions.filter(t=>t.date?.startsWith(m))}
@@ -224,7 +227,8 @@ function field(name,label,type='text',opts={}){
 function openForm(title,fields,onSave){
   $('#modalTitle').textContent=title;
   $('#modalFields').innerHTML=fields;
-  $('#modal').showModal();
+  $('#modal').classList.remove('hidden');
+  $('#modalBackdrop').classList.remove('hidden');
   $('#modalFields').querySelectorAll('.money-input').forEach(input=>input.addEventListener('input',()=>{const digits=input.value.replace(/\D/g,'');input.value=digits?formatInput(digits):''}));
   $('#modalForm').onsubmit=e=>{
     e.preventDefault();
@@ -232,7 +236,8 @@ function openForm(title,fields,onSave){
     const obj=Object.fromEntries(fd.entries());
     e.target.querySelectorAll('.money-input').forEach(input=>{obj[input.name]=String(parseAmount(input.value))});
     onSave(obj);
-    $('#modal').close();
+    $('#modal').classList.add('hidden');
+    $('#modalBackdrop').classList.add('hidden');
     e.target.reset();
     save();
   }
@@ -260,3 +265,47 @@ function addInvestment(){
     field('note','Catatan (opsional)','text',{required:false,full:true}),
     o=>data.investments.push({id:uid(),...o,capital:Number(o.capital),current:Number(o.current)})
   )
+}
+
+function addBudget(){
+  openForm('Atur anggaran',
+    field('category','Kategori','select',{options:['Makanan','Transportasi','Kos','Pulsa & internet','Belanja','Kesehatan','Hiburan','Lainnya'].map(x=>({value:x,label:x}))})+
+    field('limit',`Batas anggaran bulan ini (${currency()})`,'number',{min:1}),
+    o=>{const old=data.budgets.find(b=>b.category===o.category);if(old)old.limit=Number(o.limit);else data.budgets.push({id:uid(),category:o.category,limit:Number(o.limit)})}
+  )
+}
+
+function addDebt(){
+  openForm('Tambah utang/piutang',
+    field('kind','Jenis catatan','select',{options:[{value:'owed',label:'Utang yang harus dibayar'},{value:'receivable',label:'Piutang yang akan diterima'}]})+
+    field('person','Nama/orang','text',{placeholder:'Contoh: cicilan motor'})+
+    field('total',`Jumlah awal (${currency()})`,'number',{min:1})+
+    field('remaining',`Sisa saat ini (${currency()})`,'number',{min:0})+
+    field('due','Jatuh tempo (opsional)','date',{required:false}),
+    o=>data.debts.push({id:uid(),...o,total:Number(o.total),remaining:Number(o.remaining)})
+  )
+}
+
+function delItem(key,id){if(confirm('Hapus catatan ini? Penghapusan tidak bisa dibatalkan.')){data[key]=data[key].filter(x=>x.id!==id);save()}}
+
+function render(){
+  const inc=txAmount('income'),exp=txAmount('expense'),alloc=txAmount('allocation'),inv=data.investments.reduce((s,i)=>s+Number(i.current||0),0),invested=data.investments.reduce((s,i)=>s+Number(i.capital||0),0);
+  $('#monthLabel').textContent=new Date().toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  $('#summaryCards').innerHTML=[['Kekayaan bersih',rupiah(netWorth()),'blue','Aset dikurangi utang'],['Pemasukan bulan ini',rupiah(inc),'positive','Semua pemasukan tercatat'],['Pengeluaran bulan ini',rupiah(exp),'negative','Pengeluaran konsumsi'],['Nilai investasi',rupiah(inv),'gold',`Untung/rugi ${rupiah(inv-invested)}`]].map(c=>`<div class="card"><div class="label">${c[0]}</div><div class="value ${c[2]}">${c[1]}</div><div class="sub">${c[3]}</div></div>`).join('');
+  $('#cashflow').innerHTML=`<div class="row"><span>Pemasukan</span><b class="positive">+${rupiah(inc)}</b></div><div class="row" style="margin-top:8px"><span>Pengeluaran</span><b class="negative">−${rupiah(exp)}</b></div><div class="row" style="margin-top:8px"><span>Alokasi tabungan/investasi</span><b class="blue">${rupiah(alloc)}</b></div>`;
+  
+  const cats={};
+  monthTx().filter(t=>t.type==='expense').forEach(t=>{cats[t.category]=(cats[t.category]||0)+Number(t.amount||0)});
+  const sortedCats=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const totalExp=exp||1;
+  $('#allocation').innerHTML=sortedCats.length?sortedCats.slice(0,4).map(([cat,val])=>{
+    const pct=Math.round((val/exp)*100);
+    return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:650"><span>${esc(cat)}</span><span>${rupiah(val)} (${pct}%)</span></div><div class="bar"><span style="width:${pct}%"></span></div></div>`
+  }).join(''):'<div class="empty">Belum ada pengeluaran konsumsi bulan ini.</div>';
+
+  const rec=data.transactions.slice(0,5);
+  $('#recent').innerHTML=rec.length?`<div class="list">${rec.map(t=>`<div class="row"><div><div class="name">${esc(t.title)}</div><small>${t.date} ·${esc(t.category)}</small></div><div class="amount ${t.type==='income'?'positive':t.type==='expense'?'negative':'blue'}">${t.type==='income'?'+':t.type==='expense'?'−':''}${rupiah(t.amount)}</div></div>`).join('')}</div>`:'<div class="empty">Belum ada transaksi tercatat. Mulai catat keuanganmu!</div>';
+
+  const fMonth=$('#filterMonth').value,fType=$('#filterType').value;
+  let txs=data.transactions;
+  if(fMonth)txs=txs.filter(t=>t
