@@ -191,8 +191,7 @@ dialog::backdrop{background:#03071255;backdrop-filter:blur(4px)}
 </dialog>
 
 <script>
-const $=s=>document.querySelector(s);
-const $$=s=>[...document.querySelectorAll(s)];
+const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
 const currencyNames={IDR:'id-ID',USD:'en-US',SGD:'en-SG',MYR:'ms-MY',KRW:'ko-KR',EUR:'de-DE'};
 const currency=()=>data.currency||'IDR';
 const rupiah=n=>new Intl.NumberFormat(currencyNames[currency()]||'id-ID',{style:'currency',currency:currency(),maximumFractionDigits:0}).format(Number(n)||0);
@@ -207,7 +206,7 @@ let data=load();
 
 function load(){try{return {...structuredClone(defaults),...JSON.parse(localStorage.getItem('fintrack_data')||'{}')}}catch{return structuredClone(defaults)}}
 function save(){localStorage.setItem('fintrack_data',JSON.stringify(data));render();renderHistory()}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;T'[c]))}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function monthTx(m=monthNow()){return data.transactions.filter(t=>t.date?.startsWith(m))}
 function txAmount(type){return monthTx().filter(t=>t.type===type).reduce((a,t)=>a+Number(t.amount||0),0)}
 function assetTotal(){const income=data.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount||0),0);const expense=data.transactions.filter(t=>t.type==='expense'||t.type==='allocation').reduce((s,t)=>s+Number(t.amount||0),0);return income-expense+data.investments.reduce((s,i)=>s+Number(i.current||0),0)}
@@ -261,31 +260,3 @@ function addInvestment(){
     field('note','Catatan (opsional)','text',{required:false,full:true}),
     o=>data.investments.push({id:uid(),...o,capital:Number(o.capital),current:Number(o.current)})
   )
-}
-
-function addBudget(){
-  openForm('Atur anggaran',
-    field('category','Kategori','select',{options:['Makanan','Transportasi','Kos','Pulsa & internet','Belanja','Kesehatan','Hiburan','Lainnya'].map(x=>({value:x,label:x}))})+
-    field('limit',`Batas anggaran bulan ini (${currency()})`,'number',{min:1}),
-    o=>{const old=data.budgets.find(b=>b.category===o.category);if(old)old.limit=Number(o.limit);else data.budgets.push({id:uid(),category:o.category,limit:Number(o.limit)})}
-  )
-}
-
-function addDebt(){
-  openForm('Tambah utang/piutang',
-    field('kind','Jenis catatan','select',{options:[{value:'owed',label:'Utang yang harus dibayar'},{value:'receivable',label:'Piutang yang akan diterima'}]})+
-    field('person','Nama/orang','text',{placeholder:'Contoh: cicilan motor'})+
-    field('total',`Jumlah awal (${currency()})`,'number',{min:1})+
-    field('remaining',`Sisa saat ini (${currency()})`,'number',{min:0})+
-    field('due','Jatuh tempo (opsional)','date',{required:false}),
-    o=>data.debts.push({id:uid(),...o,total:Number(o.total),remaining:Number(o.remaining)})
-  )
-}
-
-function delItem(key,id){if(confirm('Hapus catatan ini? Penghapusan tidak bisa dibatalkan.')){data[key]=data[key].filter(x=>x.id!==id);save()}}
-
-function render(){
-  const inc=txAmount('income'),exp=txAmount('expense'),alloc=txAmount('allocation'),inv=data.investments.reduce((s,i)=>s+Number(i.current||0),0),invested=data.investments.reduce((s,i)=>s+Number(i.capital||0),0);
-  $('#monthLabel').textContent=new Date().toLocaleDateString('id-ID',{month:'long',year:'numeric'});
-  $('#summaryCards').innerHTML=[['Kekayaan bersih',rupiah(netWorth()),'blue','Aset dikurangi utang'],['Pemasukan bulan ini',rupiah(inc),'positive','Semua pemasukan tercatat'],['Pengeluaran bulan ini',rupiah(exp),'negative','Pengeluaran konsumsi'],['Nilai investasi',rupiah(inv),'gold',`Untung/rugi ${rupiah(inv-invested)}`]].map(c=>`<div class="card"><div class="label">${c[0]}</div><div class="value ${c[2]}">${c[1]}</div><div class="sub">${c[3]}</div></div>`).join('');
-  $('#cashflow').innerHTML=`<div class="row"><span>Pemasukan</span><b class="positive">+${rupiah(inc)}</b></div><div class="row" style
